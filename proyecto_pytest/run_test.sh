@@ -1,32 +1,29 @@
 #!/bin/bash
 echo "🚀 Iniciando ejecución de pruebas en Jenkins..."
 
-# 1. Intentar crear el entorno virtual
-if [ ! -d "venv" ]; then
-    echo "📦 Intentando crear entorno virtual..."
-    python3 -m venv venv || echo "⚠️ No se pudo crear venv (falta python3-venv en el sistema)"
-fi
+# 1. Intentar crear el venv, pero no morir si falla
+python3 -m venv venv || echo "⚠️ No se pudo crear el venv, se usará el Python del sistema."
 
-# 2. Intentar activar o usar pip directamente
+# 2. Intentar activar el venv
 if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
-    PYTHON_EXE="python"
+    PYTHON_BIN="python3"
 else
-    echo "⚠️ Usando Python del sistema porque el venv no está disponible."
-    PYTHON_EXE="python3"
+    echo "⚠️ venv no disponible. Instalando dependencias en el sistema..."
+    PYTHON_BIN="python3"
 fi
 
-# 3. Instalación de dependencias
-echo "📥 Instalando dependencias..."
-$PYTHON_EXE -m pip install --upgrade pip
-$PYTHON_EXE -m pip install pytest pytest-html -r requirements.txt
+# 3. Instalar dependencias (usando --break-system-packages para entornos Debian nuevos)
+$PYTHON_BIN -m pip install --upgrade pip
+$PYTHON_BIN -m pip install pytest pytest-html -r requirements.txt --break-system-packages || $PYTHON_BIN -m pip install pytest pytest-html -r requirements.txt
 
-# 4. CRUCIAL: Crear la carpeta de reportes donde Jenkins la espera
-# Si tu script corre dentro de 'proyecto_pytest', subimos un nivel
+# 4. CREAR LA CARPETA DE REPORTES (Aquí está el truco)
+# Como entraste a 'proyecto_pytest', los reportes deben estar un nivel arriba
+# para que Jenkins los encuentre en la raíz del workspace.
 mkdir -p ../reports
 
-# 5. Ejecutar pruebas
-echo "⚙️ Ejecutando pruebas con pytest..."
-$PYTHON_EXE -m pytest tests/ --junitxml=../reports/test-results.xml --html=../reports/report.html --self-contained-html
+# 5. Ejecutar pytest
+echo "⚙️ Ejecutando pruebas..."
+$PYTHON_BIN -m pytest tests/ --html=../reports/report.html --self-contained-html
 
-echo "✅ Pruebas finalizadas."
+echo "✅ Proceso terminado."
