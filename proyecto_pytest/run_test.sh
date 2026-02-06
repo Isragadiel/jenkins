@@ -1,31 +1,32 @@
 #!/bin/bash
+echo "🚀 Iniciando ejecución de pruebas en Jenkins..."
 
-echo " Iniciando ejecución de pruebas en Jenkins ... "
-
-# Verificar si el entorno virtual existe
+# 1. Intentar crear el entorno virtual
 if [ ! -d "venv" ]; then
-    echo " Entorno virtual no encontrado. Creándolo ... "
-    python3 -m venv venv
+    echo "📦 Intentando crear entorno virtual..."
+    python3 -m venv venv || echo "⚠️ No se pudo crear venv (falta python3-venv en el sistema)"
 fi
 
-# Activar el entorno virtual correctamente
+# 2. Intentar activar o usar pip directamente
 if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
-elif [ -f "venv/Scripts/activate" ]; then  # Para Windows
-    source venv/Scripts/activate
+    PYTHON_EXE="python"
 else
-    echo " Error: No se pudo activar el entorno virtual."
-    exit 1
+    echo "⚠️ Usando Python del sistema porque el venv no está disponible."
+    PYTHON_EXE="python3"
 fi
 
-# Verificar si `pip` está instalado correctamente
-echo "Instalando dependencias ... "
-pip install --upgrade pip --break-system-packages
-pip install -r requirements.txt --break-system-packages
+# 3. Instalación de dependencias
+echo "📥 Instalando dependencias..."
+$PYTHON_EXE -m pip install --upgrade pip
+$PYTHON_EXE -m pip install pytest pytest-html -r requirements.txt
 
-mkdir -p reports
-# Ejecutar las pruebas
-echo "⚙️ Ejecutando pruebas con pytest ... "
-venv/bin/python -m pytest tests/ --junitxml=reports/test-results.xml --html=reports/report.html --self-contained-html
+# 4. CRUCIAL: Crear la carpeta de reportes donde Jenkins la espera
+# Si tu script corre dentro de 'proyecto_pytest', subimos un nivel
+mkdir -p ../reports
 
-echo "Pruebas finalizadas. Reportes en reports/"
+# 5. Ejecutar pruebas
+echo "⚙️ Ejecutando pruebas con pytest..."
+$PYTHON_EXE -m pytest tests/ --junitxml=../reports/test-results.xml --html=../reports/report.html --self-contained-html
+
+echo "✅ Pruebas finalizadas."
